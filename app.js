@@ -1,6 +1,5 @@
 var express = require('express'),
     http = require('http'),
-    router = require('./routes/index'),
     path = require('path'),
     config = require('config'),
     //favicon = require('serve-favicon'),
@@ -8,6 +7,8 @@ var express = require('express'),
     cookieParser = require('cookie-parser'),
     logger = require('morgan'),
     log = require('libs/log')(module),
+    errorHandler = require('express-error-handler'),
+    HttpError = require('error').HttpError,
     app = express();
 
 // view engine setup
@@ -21,13 +22,25 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(router);
+app.use(require('middleware/sendHttpError'));
+
+require('routes')(app, HttpError);
 
 app.use(function (err, req, res, next) {
-    if (app.get('env') === 'development') {
-        express.errorHandler(err, req, res, next);
+    if (typeof err === 'number') {
+        err = new HttpError(err);
+    }
+
+    if (err instanceof HttpError) {
+        res.sendHttpError(err);
     } else {
-        res.send(500);
+        if (app.get('env') === 'development') {
+            errorHandler()(err, req, res, next);
+        } else {
+            log.error(err);
+            err = new HttpError(500);
+            res.sendHttpError(err);
+        }
     }
 });
 
