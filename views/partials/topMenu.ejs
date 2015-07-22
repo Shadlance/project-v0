@@ -1,5 +1,12 @@
 <nav>
     <ul>
-        <li><a href="#">Menu</a></li>
+        <li><a href="/">Home</a></li>
+		<li>
+			<% if (user) { %>
+				Hello, <%= user.get('username') %>! | <a id="user-logout" href="/exit">Logout</a>
+			<% } else { %>
+				<a href="/login">Login / Sign Up</a>
+			<% } %>
+		</li>
     </ul>
 </nav>

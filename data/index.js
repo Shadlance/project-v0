@@ -7,6 +7,5 @@ var mongoose = require('../libs/mongoose'),
     };
 
 async.series(funcList, function() {
-    console.log(arguments);
     mongoose.disconnect();
 });

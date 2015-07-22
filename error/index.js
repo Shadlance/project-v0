@@ -2,16 +2,14 @@ var path = require('path'),
     util = require('util'),
     http = require('http');
 
-function HttpError(status, message) {
+function CustomError(status, message) {
     Error.apply(this, arguments);
-    Error.captureStackTrace(this, HttpError);
+    Error.captureStackTrace(this, CustomError);
 
-    this.status = status;
+    if (status) this.status = status;
     this.message = message || http.STATUS_CODES[status] || 'Error';
-    //todo
-    console.log(arguments);
 }
 
-util.inherits(HttpError, Error);
-HttpError.prototype.name = "HttpError";
-exports.HttpError = HttpError;
+util.inherits(CustomError, Error);
+CustomError.prototype.name = "CustomError";
+exports.CustomError = CustomError;

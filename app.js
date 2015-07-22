@@ -1,6 +1,9 @@
 var express = require('express'),
     http = require('http'),
     path = require('path'),
+    mongoose = require('libs/mongoose'),
+    session = require('express-session'),
+    MongoStore = require('connect-mongo')(session),
     config = require('config'),
     //favicon = require('serve-favicon'),
     bodyParser = require('body-parser'),
@@ -8,7 +11,7 @@ var express = require('express'),
     logger = require('morgan'),
     log = require('libs/log')(module),
     errorHandler = require('express-error-handler'),
-    HttpError = require('error').HttpError,
+    CustomError = require('error').CustomError,
     app = express();
 
 // view engine setup
@@ -21,25 +24,44 @@ app.use(logger(app.get('env') === 'development' ? 'dev' : 'default'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(require('middleware/sendHttpError'));
 
-require('routes')(app, HttpError);
+app.use(session({
+    secret: config.get('session:secret'),
+    key: config.get('session:key'),
+    cookie: config.get('session:cookie'),
+    store: new MongoStore({ mongooseConnection: mongoose.connection }),
+    resave: true,
+    saveUninitialized: true
+}));
+
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(require('middleware/sendCustomError'));
+
+app.use(function noCacheForRoot(req, res, next) {
+    if (req.url === '/') {
+        res.header("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.header("Pragma", "no-cache");
+        res.header("Expires", 0);
+    }
+    next();
+});
+
+require('routes')(app);
 
 app.use(function (err, req, res, next) {
     if (typeof err === 'number') {
-        err = new HttpError(err);
+        err = new CustomError(err);
     }
 
-    if (err instanceof HttpError) {
-        res.sendHttpError(err);
+    if (err instanceof CustomError) {
+        res.sendCustomError(err);
     } else {
         if (app.get('env') === 'development') {
             errorHandler()(err, req, res, next);
         } else {
             log.error(err);
-            err = new HttpError(500);
-            res.sendHttpError(err);
+            err = new CustomError(500);
+            res.sendCustomError(err);
         }
     }
 });

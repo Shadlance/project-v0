@@ -1,5 +1,7 @@
 var crypto = require('crypto'),
     mongoose = require('../../libs/mongoose'),
+    async = require('async'),
+    CustomError = require('../../error').CustomError,
     Schema = mongoose.Schema,
     schema = new Schema({
        username: {
@@ -37,6 +39,28 @@ schema.virtual('password')
 
 schema.methods.checkPassword = function(password) {
     return this.encryptPassword(password) === this.hashedPassword;
+};
+
+schema.statics.authorize = function(username, password, callback) {
+    var User = this,
+        funcList = [
+            function(callback) {
+                User.findOne({ username: username }, callback);
+            },
+            function(user, callback) {
+                if (user) {
+                    if (user.checkPassword(password)) {
+                        callback(null, user);
+                    } else {
+                        callback(new CustomError(null, 'Password is not correct'));
+                    }
+                } else {
+                    callback(new CustomError(null, 'User not found'));
+                }
+            }
+        ];
+
+    async.waterfall(funcList, callback);
 };
 
 exports.User = mongoose.model('User', schema);
